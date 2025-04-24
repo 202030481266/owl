@@ -15,7 +15,10 @@ from camel.toolkits import MCPToolkit
 
 from owl.utils.enhanced_role_playing import OwlRolePlaying, arun_society
 
-load_dotenv()
+basedir = Path(__file__).parent.parent
+env_path = basedir / ".env"
+mcp_config_path = basedir / "mcp_servers_config.json"
+load_dotenv(dotenv_path=env_path)
 set_log_level(level="DEBUG")
 
 def create_role_play_model(model_platform: str, model_type: Optional[str]):
@@ -82,8 +85,7 @@ async def construct_society(
 
 
 async def main():
-    config_path = Path(__file__).parent / "mcp_servers_config.json"
-    mcp_toolkit = MCPToolkit(config_path=str(config_path))
+    mcp_toolkit = MCPToolkit(config_path=str(mcp_config_path))
 
     try:
         await mcp_toolkit.connect()
