@@ -86,6 +86,20 @@ async def construct_society(
 
 async def main():
     mcp_toolkit = MCPToolkit(config_path=str(mcp_config_path))
+    download_in_progress = False
+    
+    # 解析参数，添加--no-disconnect选项
+    wait_for_download = "--no-disconnect" in sys.argv
+    if wait_for_download:
+        sys.argv.remove("--no-disconnect")
+    
+    # 解析超时参数
+    timeout = None
+    for i, arg in enumerate(sys.argv):
+        if arg.startswith("--timeout="):
+            timeout = int(arg.split("=")[1])
+            sys.argv.pop(i)
+            break
 
     try:
         await mcp_toolkit.connect()
@@ -97,6 +111,9 @@ async def main():
 
         # Override default task if command line argument is provided
         task = sys.argv[1] if len(sys.argv) > 1 else default_task
+        
+        # 检测是否包含下载相关的关键词
+        download_in_progress = "download" in task.lower()
 
         # Connect to all MCP toolkits
         tools = [*mcp_toolkit.get_tools()]
@@ -105,13 +122,39 @@ async def main():
         with open("chat_history.json", "w", encoding="utf-8") as f:
             json.dump(chat_history, f, ensure_ascii=False, indent=4)
         print(f"\033[94mAnswer: {answer}\033[0m")
+        
+        # 如果检测到下载操作且需要等待
+        if download_in_progress and wait_for_download:
+            print("检测到下载操作，等待下载完成...")
+            if timeout:
+                print(f"将在 {timeout} 秒后自动断开连接")
+                try:
+                    # 等待用户输入或超时
+                    await asyncio.wait_for(
+                        asyncio.create_task(wait_for_user_input("下载完成后按回车键断开连接...")), 
+                        timeout=timeout
+                    )
+                except asyncio.TimeoutError:
+                    print(f"等待超时 ({timeout}秒)，准备断开连接")
+            else:
+                # 无超时，等待用户确认
+                await wait_for_user_input("下载完成后按回车键断开连接...")
 
     finally:
         # Make sure to disconnect safely after all operations are completed.
         try:
+            print("准备断开与MCP服务器的连接...")
             await mcp_toolkit.disconnect()
-        except Exception:
-            print("Disconnect failed")
+            print("已成功断开连接")
+        except Exception as e:
+            print(f"断开连接失败: {str(e)}")
+
+
+async def wait_for_user_input(prompt: str) -> None:
+    """等待用户输入"""
+    print(prompt)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, sys.stdin.readline)
 
 
 if __name__ == "__main__":
