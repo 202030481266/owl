@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@executeautomation/playwright-mcp-server"
-      ]
-    },
     "fetch": {
       "command": "python",
       "args": [
@@ -21,7 +14,25 @@
         "run",
         "arxiv-mcp-server",
         "--storage-path",
-        "D:\\项目\\owl\\ArxivData"
+        "D:\\项目\\owl\\papers\\data"
+      ]
+    },
+    "ddg-search": {
+      "command": "uvx",
+      "args": [
+        "duckduckgo-mcp-server"
+      ]
+    },
+    "g-search": {
+      "command": "npx",
+      "args": ["-y", "g-search-mcp"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "D:\\"
       ]
     }
   }

@@ -1,0 +1,74 @@
+{
+  "papers": [
+    {
+      "title": "The Sparse Frontier: Sparse Attention Trade-offs in Transformer LLMs",
+      "authors": ["Piotr Nawrot", "Robert Li", "Renjie Huang", "Sebastian Ruder", "Kelly Marchisio", "Edoardo M. Ponti"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Sparse_Frontier_Sparse_Attention_Transformer_LLMs.pdf",
+      "main_direction": "注意力机制优化"
+    },
+    {
+      "title": "Embedding Empirical Distributions for Computing Optimal Transport Maps",
+      "authors": ["Mingchen Jiang", "Peng Xu", "Xichen Ye", "Xiaohui Chen", "Yun Yang", "Yifan Chen"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Embedding_Empirical_Distributions_Optimal_Transport.pdf",
+      "main_direction": "记忆增强方法"
+    },
+    {
+      "title": "Plasma State Monitoring and Disruption Characterization using Multimodal VAEs",
+      "authors": ["Yoeri Poels", "Alessandro Pau", "Christian Donner", "Giulio Romanelli", "Olivier Sauter", "Cristina Venturini", "Vlado Menkovski"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Plasma_State_Monitoring_Multimodal_VAEs.pdf",
+      "main_direction": "递归状态传递"
+    },
+    {
+      "title": "Fault Diagnosis in New Wind Turbines using Knowledge from Existing Turbines by Generative Domain Adaptation",
+      "authors": ["Stefan Jonas", "Angela Meyer"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Fault_Diagnosis_Wind_Turbines_Generative_Adaptation.pdf",
+      "main_direction": "递归状态传递"
+    },
+    {
+      "title": "Federated Learning: A Survey on Privacy-Preserving Collaborative Intelligence",
+      "authors": ["Edward Collins", "Michel Wang"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Federated_Learning_Privacy_Preserving_Survey.pdf",
+      "main_direction": "记忆增强方法"
+    },
+    {
+      "title": "Replay to Remember: Retaining Domain Knowledge in Streaming Language Models",
+      "authors": ["Sneh Pillai"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Replay_to_Remember_Streaming_LLMs.pdf",
+      "main_direction": "长序列建模技术"
+    },
+    {
+      "title": "Integrating Learning-Based Manipulation and Physics-Based Locomotion for Whole-Body Badminton Robot Control",
+      "authors": ["Haochen Wang", "Zhiwei Shi", "Chengxi Zhu", "Yafei Qiao", "Cheng Zhang", "Fan Yang", "Pengjie Ren", "Lan Lu", "Dong Xuan"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Learning_Based_Manipulation_Badminton_Robot.pdf",
+      "main_direction": "长序列建模技术"
+    },
+    {
+      "title": "Disaggregated Deep Learning via In-Physics Computing at Radio Frequency",
+      "authors": ["Zhihui Gao", "Sri Krishna Vadlamani", "Kfir Sulimany", "Dirk Englund", "Tingjun Chen"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Disaggregated_Deep_Learning_Radio_Frequency.pdf",
+      "main_direction": "位置编码创新"
+    },
+    {
+      "title": "EgoCHARM: Resource-Efficient Hierarchical Activity Recognition using an Egocentric IMU Sensor",
+      "authors": ["Akhil Padmanabha", "Saravanan Govindarajan", "Hwanmun Kim", "Sergio Ortiz", "Rahul Rajan", "Doruk Senkal", "Sneha Kadetotad"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_EgoCHARM_Hierarchical_Activity_Recognition.pdf",
+      "main_direction": "位置编码创新"
+    },
+    {
+      "title": "Data-Driven Calibration of Prediction Sets in Large Vision-Language Models Based on Inductive Conformal Prediction",
+      "authors": ["Yuanchang Ye", "Weiyan Wen"],
+      "year": 2025,
+      "file_path": "D:\\项目\\dev\\python\\owl\\papers\\data\\2024_Data_Driven_Calibration_Vision_Language_Models.pdf",
+      "main_direction": "注意力机制优化"
+    }
+  ]
+}

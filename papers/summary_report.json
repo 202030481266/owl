@@ -1,0 +1,82 @@
+{
+  "total": 15,
+  "success": 13,
+  "failed": 2,
+  "papers": [
+    {
+      "title": "2312.00817V3",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2312.00817v3.md"
+    },
+    {
+      "title": "2501.05051V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2501.05051v1.md"
+    },
+    {
+      "title": "2504.17376V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17376v1.md"
+    },
+    {
+      "title": "2504.17563V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17563v1.md"
+    },
+    {
+      "title": "2504.17628V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17628v1.md"
+    },
+    {
+      "title": "2504.17671V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17671v1.md"
+    },
+    {
+      "title": "2504.17703V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17703v1.md"
+    },
+    {
+      "title": "2504.17709V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17709v1.md"
+    },
+    {
+      "title": "2504.17710V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17710v1.md"
+    },
+    {
+      "title": "2504.17735V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17735v1.md"
+    },
+    {
+      "title": "2504.17740V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17740v1.md"
+    },
+    {
+      "title": "2504.17752V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17752v1.md"
+    },
+    {
+      "title": "2504.17768V1",
+      "status": "成功",
+      "output_path": "D:\\项目\\dev\\python\\owl\\papers\\analysis\\2504.17768v1.md"
+    },
+    {
+      "title": "2504.17771V1",
+      "status": "失败",
+      "error": "PDF批量解析过程中发生错误: ('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))"
+    },
+    {
+      "title": "2504.17780V1",
+      "status": "失败",
+      "error": "PDF批量解析过程中发生错误: ('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))"
+    }
+  ]
+}
