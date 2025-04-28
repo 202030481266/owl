@@ -14,7 +14,7 @@
         "run",
         "arxiv-mcp-server",
         "--storage-path",
-        "D:\\项目\\owl\\papers\\data"
+        "D:\\owl\\papers\\data"
       ]
     },
     "ddg-search": {

@@ -1,0 +1,56 @@
+{
+  "logging": {
+    "level": "DEBUG",
+    "file": "logs/PaperAgent.log",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "utils_file": "logs/PaperAgentMinerU.log"
+  },
+  "paths": {
+    "env_file": ".env",
+    "mcp_config": "mcp_servers_config.json",
+    "project_dir": "D:\\owl\\papers",
+    "data_dir": "data",
+    "analysis_dir": "analysis",
+    "index_file": "paper_index.json",
+    "report_file": "paper_report.md"
+  },
+  "api": {
+    "mineru": {
+      "upload_url": "https://mineru.net/api/v4/file-urls/batch",
+      "result_url_template": "https://mineru.net/api/v4/extract-results/batch/{}",
+      "enable_formula": true,
+      "language": "auto",
+      "layout_model": "doclayout_yolo",
+      "enable_table": false
+    },
+    "volcano": {
+      "base_url_env": "ARK_API_BASE_URL",
+      "api_key_env": "ARK_API_KEY",
+      "default_model": "ep-20250326192434-95gld",
+      "model_config": {
+        "temperature": 0.6
+      }
+    },
+    "siliconflow": {
+      "base_url_env": "SILICONFLOW_API_BASE_URL",
+      "api_key_env": "SILICONFLOW_API_KEY",
+      "default_model": "deepseek-ai/DeepSeek-V3",
+      "model_config": {
+        "temperature": 0.6
+      }
+    }
+  },
+  "model": {
+    "user": {
+      "model_platform": "volcano"
+    },
+    "assistant": {
+      "model_platform": "volcano"
+    },
+    "analyze": {
+      "model_platform": "volcano",
+      "model_type": "ep-20250326192358-crtzv"
+    }
+  },
+  "max_concurrent_process": 5
+}
