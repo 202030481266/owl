@@ -17,7 +17,7 @@ from owl.utils.enhanced_role_playing import OwlRolePlaying, arun_society
 
 from config_loader import ConfigLoader
 from utils import read_pdf_content, analyze_chat_history
-from prompts import PAPER_ABSTRACT_PROMPT, SUMMARIZE_PAPER_ABSTRACT_PROMPT
+from prompts_en import ACADEMIC_PAPER_SUMMARY_PROMPT_EN, PAPER_COMPARISON_SUMMARY_PROMPT_EN
 from jinja2 import Template
 
 # 加载配置
@@ -125,7 +125,7 @@ def summarize_paper(paper_content: str) -> str:
     )
 
     # 构建总结论文的提示词
-    summary_prompt = Template(PAPER_ABSTRACT_PROMPT).render(paper_content=paper_content)
+    summary_prompt = Template(ACADEMIC_PAPER_SUMMARY_PROMPT_EN).render(paper_content=paper_content)
 
     response = client.chat.completions.create(
         model=model_type or config['api'][model_platform]['default_model'],
@@ -157,7 +157,7 @@ def generate_comprehensive_report(summaries: List[str], paper_titles: List[str])
     for title, summary in zip(paper_titles, summaries):
         formatted_input += f"### {title}\n\n{summary}\n\n---\n\n"
 
-    comprehensive_prompt = Template(SUMMARIZE_PAPER_ABSTRACT_PROMPT).render(
+    comprehensive_prompt = Template(PAPER_COMPARISON_SUMMARY_PROMPT_EN).render(
         page_number=len(summaries),
         page_content=formatted_input
     )
@@ -383,6 +383,9 @@ async def main(
                 # 保存综述报告
                 with open(report_filename, "w", encoding="utf-8") as f:
                     f.write(comprehensive_report)
+
+                # 生成并且打开可视化网页
+
 
                 print(f"\033[92m综述报告已成功创建: {report_filename}\033[0m")
                 logger.info(f"综述报告已成功创建: {report_filename}")
