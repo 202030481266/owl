@@ -52,5 +52,8 @@
       "model_type": "ep-20250326192358-crtzv"
     }
   },
-  "max_concurrent_process": 5
+  "max_concurrent_process": 5,
+  "front_end": {
+    "port": 8000
+  }
 }
