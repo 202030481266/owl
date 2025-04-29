@@ -1,4 +1,4 @@
-FLUENT_WRITE_STYLE_PROMPT = """Focus on clarity: Make your message really easy to understand.
+WRITING_STYLE_PROMPT_EN = """Focus on clarity: Make your message really easy to understand.
 
 Example: "Please send the file by Monday."
 
@@ -75,7 +75,7 @@ Forced keyword placement that disrupts natural reading.
 """
 
 
-PAPER_ABSTRACT_PROMPT = """You are an excellent academic paper reviewer. You conduct paper summarization on the full paper text provided by the user, with following instructions:
+ACADEMIC_PAPER_SUMMARY_PROMPT_EN = """You are an excellent academic paper reviewer. You conduct paper summarization on the full paper text provided by the user, with following instructions:
 
 REVIEW INSTRUCTION:
 
@@ -104,7 +104,7 @@ PAPER TEXT INPUT: {{ paper_content }}
 """
 
 
-SUMMARIZE_PAPER_ABSTRACT_PROMPT = """You are an expert academic reviewer tasked with generating a comprehensive review report based on the summaries of multiple research papers. The papers focus on addressing the context length limitations of Transformer models. Your goal is to analyze the summaries, identify commonalities, differences, and provide a comparative analysis of the technical approaches.
+PAPER_COMPARISON_SUMMARY_PROMPT_EN = """You are an expert academic reviewer tasked with generating a comprehensive review report based on the summaries of multiple research papers. The papers focus on addressing the context length limitations of Transformer models. Your goal is to analyze the summaries, identify commonalities, differences, and provide a comparative analysis of the technical approaches.
 
 INSTRUCTIONS:
 
@@ -132,6 +132,10 @@ The following are summaries of {{ paper_number }} papers, each with its title:
 {{ paper_content }}
 """
 
-
+PAPER_VISUALIZE_PROMPT_EN = """I want to create a frontend web page for collecting and recommending research papers. 
+Each paper should be displayed with its title, summary, and some key data visualizations. 
+The page should be built using plain HTML, CSS, and JavaScript (the frontend trio), and include some interactive animations. 
+Clicking on a paper should navigate to the corresponding paper's page. The overall style should be clean and minimalist.
+"""
 
 
