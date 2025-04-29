@@ -1,7 +1,7 @@
 import asyncio
-import sys
-import json
 import os
+import json
+import sys
 from typing import List, Optional, Literal
 from openai import OpenAI
 import logging
@@ -19,6 +19,10 @@ from config_loader import ConfigLoader
 from utils import read_pdf_content, analyze_chat_history
 from prompts_en import ACADEMIC_PAPER_SUMMARY_PROMPT_EN, PAPER_COMPARISON_SUMMARY_PROMPT_EN
 from jinja2 import Template
+
+from web_app import start_server
+import threading
+import webbrowser
 
 # 加载配置
 config = ConfigLoader.load_config()
@@ -193,6 +197,8 @@ async def main(
         # 测试mcp server是否连接正常
         await mcp_toolkit.connect()
 
+        tools = mcp_toolkit.get_tools()
+
         # 确保必要的目录存在
         os.makedirs(PAPER_DATA_DIR, exist_ok=True)
         os.makedirs(PAPER_ANALYSIS_DIR, exist_ok=True)
@@ -209,7 +215,7 @@ async def main(
                 "5. 递归状态传递：State Space Models、Mamba等具有递归记忆能力的模型\n\n"
                 "请执行以下步骤：\n"
                 f"1. 使用搜索工具查找相关论文，确保覆盖上述五个关键方向\n"
-                f"2. 对于每篇论文，下载PDF文件到本地'{PAPER_DATA_DIR}'目录\n"
+                f"2. 对于每篇论文，下载PDF文件到本地'{PAPER_DATA_DIR}'目录\n，文件名使用arxiv的ID\n"
                 f"3. 为每篇论文创建一个合理的文件名，包含年份和关键主题\n"
                 f"4. 确保下载的论文质量高、来源可靠（如arXiv、顶会论文等）\n"
                 f"5. 创建一个索引文件'{os.path.join(project_dir, config['paths']['index_file'])}'，包含所有下载论文的元数据（标题、作者、年份、文件路径、主要方向）\n\n"
@@ -384,9 +390,6 @@ async def main(
                 with open(report_filename, "w", encoding="utf-8") as f:
                     f.write(comprehensive_report)
 
-                # 生成并且打开可视化网页
-
-
                 print(f"\033[92m综述报告已成功创建: {report_filename}\033[0m")
                 logger.info(f"综述报告已成功创建: {report_filename}")
             else:
@@ -398,6 +401,33 @@ async def main(
 
             print(f"\033[94m所有任务已完成，结果已保存\033[0m")
 
+            # 生成并且打开可视化网页
+            file_list = []
+            for md_file in os.listdir(PAPER_ANALYSIS_DIR):
+                if md_file.endswith('.md'):
+                    file_list.append({
+                        'name': md_file,
+                        'path': os.path.join(PAPER_ANALYSIS_DIR, md_file)
+                    })
+            with open('./file-list.json', 'w', encoding='utf-8') as f:
+                json.dump(file_list, f, ensure_ascii=False, indent=4)
+
+            # 在后台启动服务器
+            threading.Thread(
+                target=start_server,
+                args=(PAPER_ANALYSIS_DIR, config["front_end"]["port"]),
+                daemon=True
+            ).start()
+
+            # 打开浏览器
+            webbrowser.open(f'http://localhost:{config["front_end"]["port"]}/index.html')
+
+            # 保持主线程运行
+            try:
+                while True:
+                    pass
+            except KeyboardInterrupt:
+                print("\n关闭服务器")
     finally:
         await asyncio.sleep(1)
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
@@ -490,3 +520,4 @@ if __name__ == "__main__":
                 asyncio.windows_events._overlapped = None
             except (ImportError, AttributeError):
                 pass
+
