@@ -102,7 +102,6 @@ async function renderFileList() {
     });
 }
 
-// 拖动调整侧边栏宽度功能
 function setupResizable() {
     const sidebar = document.getElementById('file-sidebar');
     const resizeHandle = document.getElementById('resize-handle');
@@ -123,11 +122,12 @@ function setupResizable() {
     function handleMouseMove(e) {
         if (!isResizing) return;
 
+        const offsetRight = mainContent.getBoundingClientRect().right - e.clientX;
         const newWidth = e.clientX - mainContent.getBoundingClientRect().left;
 
-        // 更新最小和最大宽度限制
-        const minWidth = 250;  // 从200增加到250
-        const maxWidth = mainContent.clientWidth * 0.6; // 从50%增加到60%
+        // 应用最小和最大宽度限制
+        const minWidth = 200;
+        const maxWidth = mainContent.clientWidth * 0.5;
 
         if (newWidth > minWidth && newWidth < maxWidth) {
             sidebar.style.width = `${newWidth}px`;
@@ -149,13 +149,6 @@ function setupResizable() {
     if (savedWidth) {
         sidebar.style.width = savedWidth;
     }
-}
-
-const savedWidth = localStorage.getItem('sidebarWidth');
-if (savedWidth) {
-    sidebar.style.width = savedWidth;
-} else {
-    sidebar.style.width = '350px'; // 设置新的默认值
 }
 
 // 刷新文件列表

@@ -89,13 +89,11 @@ body {
     background-color: var(--border-color);
     cursor: col-resize;
     transition: background-color 0.2s;
-    margin-left: 350px; /* 与sidebar宽度一致 */
 }
 
 .resize-handle:hover {
     background-color: var(--primary-color);
 }
-
 
 .main-content {
     display: flex;
@@ -104,18 +102,16 @@ body {
 }
 
 .file-sidebar {
-    width: 350px; /* 从原来的280px增加到350px */
-    min-width: 200px;
-    max-width: 50%;
-    background-color: var(--sidebar-bg);
-    border-right: 1px solid var(--border-color);
-    padding: 1rem;
+    width: 280px; /* 默认宽度 */
+    min-width: 200px; /* 最小宽度 */
+    max-width: 50%; /* 最大宽度 */
+    resize: none; /* 禁用默认resize */
     overflow-y: auto;
 }
 
 .markdown-viewer {
     flex: 1;
-    min-width: 400px; /* 确保内容区域最小宽度 */
+    min-width: 300px; /* 确保内容区域最小宽度 */
 }
 
 .sidebar-header {
