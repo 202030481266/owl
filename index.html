@@ -19,7 +19,7 @@
         </header>
 
         <div class="main-content">
-            <aside class="file-sidebar">
+            <aside class="file-sidebar" id="file-sidebar">
                 <div class="sidebar-header">
                     <h2>文件列表</h2>
                     <button id="refresh-files">🔄</button>
@@ -28,6 +28,8 @@
                     <!-- 文件列表将通过JS动态生成 -->
                 </ul>
             </aside>
+
+            <div class="resize-handle" id="resize-handle"></div>
 
             <main class="markdown-viewer">
                 <div class="viewer-header">

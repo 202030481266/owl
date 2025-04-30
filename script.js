@@ -102,12 +102,68 @@ async function renderFileList() {
     });
 }
 
+// 拖动调整侧边栏宽度功能
+function setupResizable() {
+    const sidebar = document.getElementById('file-sidebar');
+    const resizeHandle = document.getElementById('resize-handle');
+    const mainContent = document.querySelector('.main-content');
+
+    let isResizing = false;
+    let lastDownX = 0;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        lastDownX = e.clientX;
+        document.body.style.cursor = 'col-resize';
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        e.preventDefault();
+    });
+
+    function handleMouseMove(e) {
+        if (!isResizing) return;
+
+        const newWidth = e.clientX - mainContent.getBoundingClientRect().left;
+
+        // 更新最小和最大宽度限制
+        const minWidth = 250;  // 从200增加到250
+        const maxWidth = mainContent.clientWidth * 0.6; // 从50%增加到60%
+
+        if (newWidth > minWidth && newWidth < maxWidth) {
+            sidebar.style.width = `${newWidth}px`;
+        }
+    }
+
+    function handleMouseUp() {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+
+        // 保存宽度到本地存储
+        localStorage.setItem('sidebarWidth', sidebar.style.width);
+    }
+
+    // 恢复上次保存的宽度
+    const savedWidth = localStorage.getItem('sidebarWidth');
+    if (savedWidth) {
+        sidebar.style.width = savedWidth;
+    }
+}
+
+const savedWidth = localStorage.getItem('sidebarWidth');
+if (savedWidth) {
+    sidebar.style.width = savedWidth;
+} else {
+    sidebar.style.width = '350px'; // 设置新的默认值
+}
 
 // 刷新文件列表
 document.getElementById('refresh-files').addEventListener('click', renderFileList);
 
 // 初始化应用
 document.addEventListener('DOMContentLoaded', () => {
+    setupResizable();
     renderFileList();
 
     // 默认加载第一个文件

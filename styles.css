@@ -84,17 +84,38 @@ body {
     transform: scale(1.1);
 }
 
+.resize-handle {
+    width: 8px;
+    background-color: var(--border-color);
+    cursor: col-resize;
+    transition: background-color 0.2s;
+    margin-left: 350px; /* 与sidebar宽度一致 */
+}
+
+.resize-handle:hover {
+    background-color: var(--primary-color);
+}
+
+
 .main-content {
     display: flex;
     flex: 1;
+    overflow: hidden; /* 防止拖动时内容溢出 */
 }
 
 .file-sidebar {
-    width: 280px;
+    width: 350px; /* 从原来的280px增加到350px */
+    min-width: 200px;
+    max-width: 50%;
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     padding: 1rem;
     overflow-y: auto;
+}
+
+.markdown-viewer {
+    flex: 1;
+    min-width: 400px; /* 确保内容区域最小宽度 */
 }
 
 .sidebar-header {
