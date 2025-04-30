@@ -107,6 +107,7 @@ body {
     max-width: 50%; /* 最大宽度 */
     resize: none; /* 禁用默认resize */
     overflow-y: auto;
+    padding: 1rem;
 }
 
 .markdown-viewer {
@@ -152,21 +153,44 @@ body {
     font-weight: 500;
     display: flex;
     align-items: center;
+    word-break: break-word; /* 允许在单词内换行 */
+    white-space: normal; /* 允许文本换行 */
+    overflow-wrap: break-word; /* 确保长单词也能换行 */
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
 }
 
 .file-list li:hover {
     background-color: var(--hover-color);
+    border-left-color: var(--primary-color);
 }
 
 .file-list li.active {
     background-color: var(--primary-color);
     color: white;
+    border-left-color: white;
 }
 
 .file-list li::before {
-    content: "📄";
+    content: "\f15c";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 400;
     margin-right: 0.75rem;
     font-size: 1rem;
+}
+
+.file-list .loading,
+.file-list .error,
+.file-list .no-files {
+    padding: 0.75rem 1rem;
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.8;
+    font-style: italic;
+}
+
+.file-list .error {
+    color: #e74c3c;
 }
 
 .markdown-viewer {
@@ -190,6 +214,8 @@ body {
 
 .markdown-content {
     padding: 1rem 0;
+    font-size: 1.05rem;
+    line-height: 1.7;
 }
 
 .markdown-content h1,
@@ -197,6 +223,8 @@ body {
 .markdown-content h3 {
     margin: 1.5rem 0 1rem;
     color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
 }
 
 .markdown-content p {
@@ -210,24 +238,72 @@ body {
     overflow-x: auto;
     margin: 1.5rem 0;
     box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
 }
 
 .markdown-content code {
     font-family: 'Courier New', Courier, monospace;
+    background-color: var(--hover-color);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.markdown-content pre > code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    display: block;
+}
+
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin: 1rem 0;
+    display: block;
+}
+
+.markdown-content img.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    cursor: zoom-out;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 1rem 0 1rem 2rem;
+}
+
+.markdown-content li {
+    margin-bottom: 0.5rem;
 }
 
 .markdown-content blockquote {
     border-left: 4px solid var(--primary-color);
-    padding-left: 1rem;
+    padding: 0.5rem 1rem;
     margin: 1.5rem 0;
-    color: var(--text-color);
-    opacity: 0.8;
+    background-color: var(--card-bg);
+    border-radius: 0 6px 6px 0;
+    box-shadow: var(--shadow);
 }
 
 .markdown-content table {
     width: 100%;
     border-collapse: collapse;
     margin: 1.5rem 0;
+    box-shadow: var(--shadow);
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 .markdown-content th,
@@ -238,7 +314,52 @@ body {
 }
 
 .markdown-content th {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+}
+
+.markdown-content tr:nth-child(even) {
     background-color: var(--hover-color);
+}
+
+.markdown-content tr:hover {
+    background-color: var(--hover-color);
+}
+
+.markdown-content ul li,
+.markdown-content ol li {
+    padding: 0.3rem 0;
+}
+
+.markdown-content hr {
+    border: none;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 2rem 0;
+}
+
+.error-message {
+    padding: 1rem;
+    margin: 1rem 0;
+    background-color: #fee;
+    border-left: 4px solid #e74c3c;
+    border-radius: 4px;
+    color: #e74c3c;
+}
+
+.header-anchor {
+    opacity: 0;
+    margin-left: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+h1:hover .header-anchor,
+h2:hover .header-anchor,
+h3:hover .header-anchor {
+    opacity: 1;
 }
 
 .placeholder {
@@ -254,12 +375,117 @@ body {
     }
 
     .file-sidebar {
-        width: 100%;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+    }
+
+    .resize-handle {
+        display: none;
     }
 
     .markdown-viewer {
-        padding: 1.5rem;
+        padding: 1rem;
     }
+}
+
+/* 搜索框样式 */
+.search-container {
+    margin: 0.5rem 0 1rem;
+    width: 100%;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+}
+
+/* 目录样式 */
+.toc-container {
+    display: none;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: var(--card-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.toc-container.visible {
+    display: block;
+}
+
+.toc-container h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.toc-container ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.toc-container li {
+    margin: 0.3rem 0;
+}
+
+.toc-container li a {
+    display: block;
+    padding: 0.3rem 0;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.toc-container li a:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.toc-container li.toc-h2 {
+    margin-left: 1rem;
+}
+
+.toc-container li.toc-h3 {
+    margin-left: 2rem;
+}
+
+/* 查看器控件 */
+.viewer-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.viewer-controls button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.viewer-controls button:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
 }

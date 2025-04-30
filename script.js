@@ -61,12 +61,55 @@ async function loadMarkdownFile(filePath, fileName) {
         const markdownText = await response.text();
 
         document.getElementById('current-filename').textContent = fileName;
+        
+        // 配置marked选项以增强渲染
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,               // 添加换行符支持
+            gfm: true,                  // 使用GitHub风格Markdown
+            headerIds: true,            // 为标题添加ID
+            mangle: false,              // 不转义标题文本
+            smartLists: true,           // 使用更智能的列表行为
+            smartypants: true,          // 使用更智能的标点符号
+            xhtml: false                // 不使用自闭合标签
+        });
+        
         const htmlContent = marked.parse(markdownText);
         document.getElementById('markdown-content').innerHTML = htmlContent;
 
+        // 应用代码高亮
         document.querySelectorAll('pre code').forEach(block => {
             hljs.highlightElement(block);
         });
+
+        // 为图片添加点击放大功能
+        document.querySelectorAll('#markdown-content img').forEach(img => {
+            img.addEventListener('click', function() {
+                this.classList.toggle('fullscreen');
+            });
+            img.style.cursor = 'pointer';
+        });
+
+        // 为标题添加锚点链接
+        document.querySelectorAll('#markdown-content h1, #markdown-content h2, #markdown-content h3').forEach(heading => {
+            const id = heading.textContent.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
+            heading.id = id;
+            
+            const anchor = document.createElement('a');
+            anchor.className = 'header-anchor';
+            anchor.href = `#${id}`;
+            anchor.textContent = '#';
+            anchor.title = '链接到此标题';
+            heading.appendChild(anchor);
+        });
+
+        // 生成目录
+        generateTOC();
 
         const fileItems = document.querySelectorAll('.file-list li');
         fileItems.forEach(item => {
@@ -86,20 +129,149 @@ async function loadMarkdownFile(filePath, fileName) {
     }
 }
 
+// 生成目录功能
+function generateTOC() {
+    const tocList = document.getElementById('toc-list');
+    tocList.innerHTML = '';
+    
+    const headings = document.querySelectorAll('#markdown-content h1, #markdown-content h2, #markdown-content h3');
+    
+    if (headings.length === 0) {
+        tocList.innerHTML = '<li>本文档没有标题</li>';
+        return;
+    }
+    
+    headings.forEach(heading => {
+        const li = document.createElement('li');
+        li.className = `toc-${heading.tagName.toLowerCase()}`;
+        
+        const a = document.createElement('a');
+        a.href = `#${heading.id}`;
+        a.textContent = heading.textContent.replace(/#$/, ''); // 移除锚点字符
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+        
+        li.appendChild(a);
+        tocList.appendChild(li);
+    });
+}
+
+// 切换目录显示
+document.getElementById('toc-toggle').addEventListener('click', function() {
+    const tocContainer = document.getElementById('toc-container');
+    tocContainer.classList.toggle('visible');
+    
+    // 如果目录为空，则生成目录
+    if (tocContainer.classList.contains('visible') && document.getElementById('toc-list').children.length === 0) {
+        generateTOC();
+    }
+});
+
+// 打印功能
+document.getElementById('print-content').addEventListener('click', function() {
+    const fileName = document.getElementById('current-filename').textContent;
+    const contentToPrint = document.getElementById('markdown-content').innerHTML;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>打印: ${fileName}</title>
+            <link rel="stylesheet" href="styles.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+            <style>
+                body {
+                    padding: 20px;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                }
+                @media print {
+                    .header-anchor {
+                        display: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>${fileName}</h1>
+            <div class="markdown-content">${contentToPrint}</div>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    
+    // 等待样式加载完成后打印
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
+});
+
+// 文件搜索功能
+document.getElementById('file-search').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const fileItems = document.querySelectorAll('.file-list li:not(.loading):not(.error):not(.no-files)');
+    
+    fileItems.forEach(item => {
+        const fileName = item.textContent.toLowerCase();
+        if (fileName.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // 显示没有匹配结果的提示
+    const visibleCount = Array.from(fileItems).filter(item => item.style.display !== 'none').length;
+    const noResultsItem = document.querySelector('.file-list li.no-results');
+    
+    if (visibleCount === 0 && searchTerm !== '') {
+        if (!noResultsItem) {
+            const li = document.createElement('li');
+            li.className = 'no-results';
+            li.textContent = `没有匹配 "${searchTerm}" 的文件`;
+            document.getElementById('file-list').appendChild(li);
+        } else {
+            noResultsItem.textContent = `没有匹配 "${searchTerm}" 的文件`;
+            noResultsItem.style.display = 'block';
+        }
+    } else if (noResultsItem) {
+        noResultsItem.style.display = 'none';
+    }
+});
+
 // 渲染文件列表
 async function renderFileList() {
     const fileList = document.getElementById('file-list');
-    fileList.innerHTML = '';
+    fileList.innerHTML = '<li class="loading">加载文件列表中...</li>';
 
-    const files = await fetchMarkdownFiles();
+    try {
+        const files = await fetchMarkdownFiles();
+        
+        fileList.innerHTML = '';
+        
+        if (files.length === 0) {
+            fileList.innerHTML = '<li class="no-files">没有找到Markdown文件</li>';
+            return;
+        }
 
-    files.forEach(file => {
-        const li = document.createElement('li');
-        li.textContent = file.name;
-        li.dataset.path = file.path;
-        li.addEventListener('click', () => loadMarkdownFile(file.path, file.name));
-        fileList.appendChild(li);
-    });
+        // 根据文件名排序
+        files.sort((a, b) => a.name.localeCompare(b.name));
+
+        files.forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = file.name;
+            li.title = file.name; // 添加悬停提示，显示完整文件名
+            li.dataset.path = file.path;
+            li.addEventListener('click', () => loadMarkdownFile(file.path, file.name));
+            fileList.appendChild(li);
+        });
+    } catch (error) {
+        fileList.innerHTML = `<li class="error">加载文件列表失败: ${error.message}</li>`;
+    }
 }
 
 function setupResizable() {
