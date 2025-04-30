@@ -1,6 +1,7 @@
 import json
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import os
+import mimetypes
 
 
 class CustomMarkdownHandler(SimpleHTTPRequestHandler):
@@ -11,18 +12,30 @@ class CustomMarkdownHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         # 处理文件列表请求
         if self.path == '/file-list.json':
-            file_list = []
-            for md_file in os.listdir(self.md_directory):
-                if md_file.endswith('.md'):
-                    file_list.append({
-                        'name': md_file,
-                        'path': f'/get_markdown?file={md_file}'
-                    })
-
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
             self.end_headers()
-            self.wfile.write(json.dumps(file_list, ensure_ascii=False).encode('utf-8'))
+            
+            file_list = []
+            try:
+                for md_file in sorted(os.listdir(self.md_directory)):
+                    if md_file.endswith('.md'):
+                        # 获取文件最后修改时间
+                        file_path = os.path.join(self.md_directory, md_file)
+                        file_stats = os.stat(file_path)
+                        last_modified = file_stats.st_mtime
+                        
+                        file_list.append({
+                            'name': md_file,
+                            'path': f'/get_markdown?file={md_file}',
+                            'lastModified': last_modified
+                        })
+                self.wfile.write(json.dumps(file_list, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode('utf-8'))
 
         # 处理Markdown文件请求
         elif self.path.startswith('/get_markdown'):
@@ -37,22 +50,68 @@ class CustomMarkdownHandler(SimpleHTTPRequestHandler):
             filepath = os.path.join(self.md_directory, filename)
 
             if os.path.exists(filepath):
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read()
 
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain; charset=utf-8')
-                self.end_headers()
-                self.wfile.write(content.encode('utf-8'))
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/markdown; charset=utf-8')
+                    self.send_header('Cache-Control', 'max-age=60')  # 缓存1分钟
+                    self.end_headers()
+                    self.wfile.write(content.encode('utf-8'))
+                except UnicodeDecodeError:
+                    # 尝试使用其他编码
+                    with open(filepath, 'r', encoding='gbk') as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/markdown; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(content.encode('utf-8'))
             else:
                 self.send_error(404, f"File not found: {filename}")
 
         # 默认处理静态文件
         else:
-            super().do_GET()
+            # 添加对主要静态文件的MIME类型支持
+            if self.path.endswith('.css'):
+                content_type = 'text/css'
+            elif self.path.endswith('.js'):
+                content_type = 'application/javascript'
+            elif self.path.endswith('.html'):
+                content_type = 'text/html'
+            elif self.path.endswith('.json'):
+                content_type = 'application/json'
+            elif self.path.endswith('.png'):
+                content_type = 'image/png'
+            elif self.path.endswith('.jpg') or self.path.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif self.path.endswith('.svg'):
+                content_type = 'image/svg+xml'
+            else:
+                # 使用mimetypes猜测MIME类型
+                content_type = mimetypes.guess_type(self.path)[0]
+            
+            if content_type:
+                self.send_response(200)
+                self.send_header('Content-type', content_type)
+                if content_type.startswith('image/'):
+                    self.send_header('Cache-Control', 'max-age=86400')  # 图片缓存1天
+                else:
+                    self.send_header('Cache-Control', 'max-age=3600')   # 其他静态文件缓存1小时
+                try:
+                    super().do_GET()
+                except:
+                    self.send_error(404, f"File not found: {self.path}")
+            else:
+                super().do_GET()
 
 
 def start_server(md_directory, port=8000):
+    # 确保目录存在
+    if not os.path.exists(md_directory):
+        print(f"Warning: Directory {md_directory} does not exist. Creating it...")
+        os.makedirs(md_directory)
+        
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     # 创建自定义的Handler工厂函数
@@ -62,4 +121,5 @@ def start_server(md_directory, port=8000):
     server_address = ('', port)
     httpd = HTTPServer(server_address, handler)
     print(f"服务器启动在 http://localhost:{port}")
+    print(f"Markdown文件目录: {os.path.abspath(md_directory)}")
     httpd.serve_forever()
