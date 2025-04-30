@@ -305,7 +305,14 @@ def strip_markdown_fences(text: str) -> str:
     """
     将所有 ```markdown ... ``` 包裹的区块去掉标记，只保留内部内容。
     支持多处出现、跨行匹配。
+    同时处理不完整的标记，例如只有开始没有结束的情况。
     """
+    # 首先处理完整的markdown标记对
     pattern = re.compile(r'```markdown\s*\n([\s\S]*?)\n```', re.MULTILINE)
-    # 用捕获组 1（即内部内容）替换整个匹配
-    return pattern.sub(r'\1', text)
+    result = pattern.sub(r'\1', text)
+    
+    # 处理只有开始标记的情况
+    incomplete_pattern = re.compile(r'```markdown\s*\n([\s\S]*?)$', re.MULTILINE)
+    result = incomplete_pattern.sub(r'\1', result)
+    
+    return result
