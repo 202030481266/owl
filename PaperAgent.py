@@ -16,7 +16,7 @@ from camel.models import BaseModelBackend
 from owl.utils.enhanced_role_playing import OwlRolePlaying, arun_society
 
 from config_loader import ConfigLoader
-from utils import read_pdf_content, analyze_chat_history
+from utils import read_pdf_content, analyze_chat_history, strip_markdown_fences
 from prompts_en import ACADEMIC_PAPER_SUMMARY_PROMPT_EN, PAPER_COMPARISON_SUMMARY_PROMPT_EN
 from jinja2 import Template
 
@@ -215,8 +215,8 @@ async def main(
                 "5. 递归状态传递：State Space Models、Mamba等具有递归记忆能力的模型\n\n"
                 "请执行以下步骤：\n"
                 f"1. 使用搜索工具查找相关论文，确保覆盖上述五个关键方向\n"
-                f"2. 对于每篇论文，下载PDF文件到本地'{PAPER_DATA_DIR}'目录\n，文件名使用arxiv的ID\n"
-                f"3. 为每篇论文创建一个合理的文件名，包含年份和关键主题\n"
+                f"2. 对于每篇论文，下载PDF文件到本地'{PAPER_DATA_DIR}'目录\n"
+                f"3. 为每篇论文创建一个合理的文件名（不带文件格式后缀），包含年份和关键主题\n"
                 f"4. 确保下载的论文质量高、来源可靠（如arXiv、顶会论文等）\n"
                 f"5. 创建一个索引文件'{os.path.join(project_dir, config['paths']['index_file'])}'，包含所有下载论文的元数据（标题、作者、年份、文件路径、主要方向）\n\n"
                 "请确保下载的论文具有多样性，覆盖不同的技术路线和方法。"
@@ -281,12 +281,12 @@ async def main(
                         lambda: read_pdf_content(pdf_path, is_directory=False, output_dir=PAPER_ANALYSIS_DIR)
                     )
 
-                    if "error" in pdf_content_result:
-                        logger.error(f"读取PDF内容失败: {pdf_content_result['error']}")
+                    if pdf_content_result['status'] == 'fail':
+                        logger.error(f"读取PDF内容失败: {pdf_content_result['content']}")
                         return {
                             "title": paper_title,
                             "status": "失败",
-                            "error": pdf_content_result["error"]
+                            "error": pdf_content_result["content"]
                         }
 
                     # 获取PDF内容
@@ -323,7 +323,7 @@ async def main(
             def write_summary_to_file(path, title, content):
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(f"# {title} - 论文总结\n\n")
-                    f.write(content)
+                    f.write(strip_markdown_fences(content))
 
             # 使用信号量限制并发量
             semaphore = asyncio.Semaphore(config['max_concurrent_process'])  # 最多同时处理5篇论文
@@ -388,7 +388,7 @@ async def main(
 
                 # 保存综述报告
                 with open(report_filename, "w", encoding="utf-8") as f:
-                    f.write(comprehensive_report)
+                    f.write(strip_markdown_fences(comprehensive_report))
 
                 print(f"\033[92m综述报告已成功创建: {report_filename}\033[0m")
                 logger.info(f"综述报告已成功创建: {report_filename}")
@@ -496,7 +496,7 @@ if __name__ == "__main__":
                           default='all', help='指定要执行的步骤: download(下载论文), analyze(分析论文), all(全部执行)')
         parser.add_argument('--create-test-index', action='store_true',
                           help='创建测试索引文件并退出')
-        parser.add_argument('--project-dir', type=str, default='D:\\项目\\dev\\python\\owl\\papers',
+        parser.add_argument('--project-dir', type=str, default='D:\\owl\\papers',
                           help='指定项目目录路径')
         args = parser.parse_args()
 
@@ -520,4 +520,3 @@ if __name__ == "__main__":
                 asyncio.windows_events._overlapped = None
             except (ImportError, AttributeError):
                 pass
-
