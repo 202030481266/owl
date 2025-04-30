@@ -6,6 +6,7 @@ import glob
 import zipfile
 import io
 import json
+import re
 from pathlib import Path
 from camel.logger import set_log_level, get_logger
 from config_loader import ConfigLoader
@@ -110,7 +111,7 @@ def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str 
 
         logger.info(f"所有文件上传完成，批处理ID: {batch_id}")
 
-        max_attempts = 100 * len(pdf_files)
+        max_attempts = 200 * len(pdf_files)
         attempt = 0
         result_dict = {}
         processed_files = set()
@@ -172,31 +173,52 @@ def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str 
                                         if md_files:
                                             with zf.open(md_files[0]) as md_file:
                                                 md_content = md_file.read().decode('utf-8')
-                                                result_dict[file_name] = md_content
+                                                result_dict[file_name] = {
+                                                    "content": md_content,
+                                                    "status": "success"
+                                                }
                                                 logger.info(f"已从文件 {file_name} 中提取full.md内容，共{len(md_content)}字符")
                                         else:
                                             logger.warning(f"ZIP文件中未找到full.md: {output_file}")
-                                            result_dict[file_name] = f"处理成功但未找到full.md文件: {output_file}"
+                                            result_dict[file_name] = {
+                                                "content": f"处理成功但未找到full.md文件: {output_file}",
+                                                "status": "fail"
+                                            }
                                     processed_files.add(file_name)
                                 except Exception as ex:
                                     logger.error(f"提取full.md内容时发生错误: {str(ex)}")
-                                    result_dict[file_name] = f"提取full.md内容时发生错误: {str(ex)}"
+                                    result_dict[file_name] = {
+                                        "content": f"提取full.md内容时发生错误: {str(ex)}",
+                                        "status": "fail"
+                                    }
                                     processed_files.add(file_name)
                             else:
                                 logger.error(f"下载解析结果ZIP失败: {zip_response.status_code}")
-                                result_dict[file_name] = f"下载解析结果失败: {zip_response.status_code}"
+                                result_dict[file_name] = {
+                                    "content": f"下载解析结果失败: {zip_response.status_code}",
+                                    "status": "fail"
+                                }
                                 processed_files.add(file_name)
                         except Exception as e:
                             logger.error(f"下载ZIP文件时出错: {str(e)}")
-                            result_dict[file_name] = f"下载ZIP文件时出错: {str(e)}"
+                            result_dict[file_name] = {
+                                "content": f"下载ZIP文件时出错: {str(e)}",
+                                "status": "fail"
+                            }
                             processed_files.add(file_name)
                     else:
-                        result_dict[file_name] = "解析完成但未返回下载链接"
+                        result_dict[file_name] = {
+                            "content": "解析完成但未返回下载链接",
+                            "status": "fail"
+                        }
                         processed_files.add(file_name)
                         logger.warning(f"文件 {file_name} 解析完成但未返回下载链接")
                 elif state == "failed":
                     error_message = task.get("err_msg", "未知错误")
-                    result_dict[file_name] = f"处理失败: {error_message}"
+                    result_dict[file_name] = {
+                        "content": f"处理失败: {error_message}",
+                        "status": "fail"
+                    }
                     processed_files.add(file_name)
                     logger.error(f"文件 {file_name} 处理失败: {error_message}")
                 else:
@@ -215,25 +237,17 @@ def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str 
 
         for file_name in file_names:
             if file_name not in processed_files:
-                result_dict[file_name] = "处理超时或未返回结果"
+                result_dict[file_name] = {
+                    "content": "处理超时或未返回结果",
+                    "status": "fail"
+                }
                 logger.warning(f"文件 {file_name} 处理超时或未返回结果")
 
-        return result_dict
+        return result_dict if is_directory else next(iter(result_dict.values()))
 
     except Exception as e:
         logger.error(f"PDF批量解析过程中发生错误: {str(e)}")
         return {"error": f"PDF批量解析过程中发生错误: {str(e)}"}
-
-# 简单测试mineru的API
-def test_read_pdf_content():
-    pdf_folder = "./test"
-    output_dir = "./test/output"
-    result = read_pdf_content(pdf_folder, True, output_dir)
-    if "error" in result:
-        print(result["error"])
-    else:
-        with open("./test/result.json", "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=4, ensure_ascii=False)
 
 
 # 分析聊天记录
@@ -285,3 +299,13 @@ def analyze_chat_history(chat_history, key: str):
 
     print(f"Records saved to PaperAgent_{key}_history.json")
     print(f"============ Analysis Complete ============\n")
+
+
+def strip_markdown_fences(text: str) -> str:
+    """
+    将所有 ```markdown ... ``` 包裹的区块去掉标记，只保留内部内容。
+    支持多处出现、跨行匹配。
+    """
+    pattern = re.compile(r'```markdown\s*\n([\s\S]*?)\n```', re.MULTILINE)
+    # 用捕获组 1（即内部内容）替换整个匹配
+    return pattern.sub(r'\1', text)
