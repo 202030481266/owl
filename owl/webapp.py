@@ -255,6 +255,7 @@ MODULE_DESCRIPTIONS = {
     "run_groq": "Using groq model to process tasks",
     "run_ppio": "Using ppio model to process tasks",
     "run_together_ai": "Using together ai model to process tasks",
+    "run_novita_ai": "Using novita ai model to process tasks",
 }
 
 
@@ -640,6 +641,8 @@ def get_api_guide(key: str) -> str:
         return "https://chunkr.ai/"
     elif "firecrawl" in key_lower:
         return "https://www.firecrawl.dev/"
+    elif "novita" in key_lower:
+        return "https://novita.ai/settings/key-management?utm_source=github_owl&utm_medium=github_readme&utm_campaign=github_link"
     else:
         return ""
 

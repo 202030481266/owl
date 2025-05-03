@@ -254,6 +254,7 @@ MODULE_DESCRIPTIONS = {
     "run_groq": "使用groq模型处理任务",
     "run_ppio": "使用ppio模型处理任务",
     "run_together_ai": "使用together ai模型处理任务",
+    "run_novita_ai": "使用novita ai模型处理任务",
 }
 
 
@@ -623,6 +624,8 @@ def get_api_guide(key: str) -> str:
         return "https://chunkr.ai/"
     elif "firecrawl" in key_lower:
         return "https://www.firecrawl.dev/"
+    elif "novita" in key_lower:
+        return "https://novita.ai/settings/key-management?utm_source=github_owl&utm_medium=github_readme&utm_campaign=github_link"
     else:
         return ""
 
