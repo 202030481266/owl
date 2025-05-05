@@ -250,6 +250,146 @@ def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str 
         return {"error": f"PDF批量解析过程中发生错误: {str(e)}"}
 
 
+def read_pdf_content_local(pdf_path: str, is_directory: bool = False, output_dir: str = "./output") -> dict:
+    """
+    使用本地MineU库处理PDF文件，提取内容并返回结果
+    
+    Args:
+        pdf_path: PDF文件路径或包含PDF文件的目录路径
+        is_directory: 是否为目录
+        output_dir: 输出目录
+    
+    Returns:
+        字典，包含处理结果
+    """
+    try:
+        import os
+        from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader # type: ignore
+        from magic_pdf.data.dataset import PymuDocDataset # type: ignore
+        from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
+        from magic_pdf.config.enums import SupportedPdfParseMethod # type: ignore
+        
+        os.makedirs(output_dir, exist_ok=True)
+        local_image_dir = os.path.join(output_dir, "images")
+        os.makedirs(local_image_dir, exist_ok=True)
+        image_dir = os.path.basename(local_image_dir)
+        
+        image_writer = FileBasedDataWriter(local_image_dir)
+        md_writer = FileBasedDataWriter(output_dir)
+        
+        pdf_files = []
+        file_names = []
+        
+        if is_directory:
+            if not os.path.isdir(pdf_path):
+                logger.error(f"目录不存在: {pdf_path}")
+                return {"error": f"目录不存在: {pdf_path}"}
+                
+            pdf_pattern = os.path.join(pdf_path, "*.pdf")
+            for pdf_file in glob.glob(pdf_pattern):
+                pdf_files.append(pdf_file)
+                file_names.append(os.path.basename(pdf_file))
+                
+            if not pdf_files:
+                logger.error(f"目录中未找到PDF文件: {pdf_path}")
+                return {"error": f"目录中未找到PDF文件: {pdf_path}"}
+        else:
+            if not os.path.exists(pdf_path):
+                logger.error(f"文件不存在: {pdf_path}")
+                return {"error": f"文件不存在: {pdf_path}"}
+                
+            pdf_files.append(pdf_path)
+            file_names.append(os.path.basename(pdf_path))
+        
+        result_dict = {}
+        reader = FileBasedDataReader("")
+        
+        for i, (pdf_file, file_name) in enumerate(zip(pdf_files, file_names)):
+            try:
+                logger.info(f"开始处理文件 {file_name}")
+                name_without_suffix = os.path.splitext(file_name)[0]
+                
+                # 读取PDF文件
+                pdf_bytes = reader.read(pdf_file)
+                
+                # 创建数据集实例
+                ds = PymuDocDataset(pdf_bytes)
+                
+                # 推理
+                if ds.classify() == SupportedPdfParseMethod.OCR:
+                    logger.info(f"文件 {file_name} 使用OCR模式处理")
+                    infer_result = ds.apply(doc_analyze, ocr=True)
+                    pipe_result = infer_result.pipe_ocr_mode(image_writer)
+                else:
+                    logger.info(f"文件 {file_name} 使用文本模式处理")
+                    infer_result = ds.apply(doc_analyze, ocr=False)
+                    pipe_result = infer_result.pipe_txt_mode(image_writer)
+                
+                # 保存模型结果
+                infer_result.draw_model(os.path.join(output_dir, f"{name_without_suffix}_model.pdf"))
+                
+                # 获取模型推理结果
+                model_inference_result = infer_result.get_infer_res()
+                
+                # 保存布局结果
+                pipe_result.draw_layout(os.path.join(output_dir, f"{name_without_suffix}_layout.pdf"))
+                
+                # 保存spans结果
+                pipe_result.draw_span(os.path.join(output_dir, f"{name_without_suffix}_spans.pdf"))
+                
+                # 获取markdown内容
+                md_content = pipe_result.get_markdown(image_dir)
+                
+                # 保存markdown
+                md_file_path = f"{name_without_suffix}.md"
+                pipe_result.dump_md(md_writer, md_file_path, image_dir)
+                
+                # 生成和保存内容列表
+                content_list_content = pipe_result.get_content_list(image_dir)
+                pipe_result.dump_content_list(md_writer, f"{name_without_suffix}_content_list.json", image_dir)
+                
+                # 生成和保存中间JSON
+                middle_json_content = pipe_result.get_middle_json()
+                pipe_result.dump_middle_json(md_writer, f'{name_without_suffix}_middle.json')
+                
+                # 读取生成的markdown文件
+                md_file_full_path = os.path.join(output_dir, md_file_path)
+                with open(md_file_full_path, 'r', encoding='utf-8') as f:
+                    md_content = f.read()
+                
+                result_dict[file_name] = {
+                    "content": md_content,
+                    "status": "success"
+                }
+                logger.info(f"文件 {file_name} 处理成功，共{len(md_content)}字符")
+                
+            except Exception as e:
+                raise e
+                error_message = str(e)
+                logger.error(f"处理文件 {file_name} 时出错: {error_message}")
+                result_dict[file_name] = {
+                    "content": f"处理失败: {error_message}",
+                    "status": "fail"
+                }
+        
+        return result_dict if is_directory else result_dict.get(file_names[0], {"error": "处理失败", "status": "fail"})
+        
+    except ImportError as e:
+        error_message = f"未能导入必要的MineU库: {str(e)}"
+        logger.error(error_message)
+        return {"error": error_message, "status": "fail"}
+    except Exception as e:
+        raise e
+        error_message = f"PDF批量解析过程中发生错误: {str(e)}"
+        logger.error(error_message)
+        return {"error": error_message, "status": "fail"}
+
+
+def test_read_pdf_content_local():
+    result = read_pdf_content_local("D:/test/mineru/AutoSurvey.pdf", False, "./test/output")
+    print(result)
+
+
 # 分析聊天记录
 def analyze_chat_history(chat_history, key: str):
     """Analyze chat history and extract tool call information."""
@@ -316,3 +456,6 @@ def strip_markdown_fences(text: str) -> str:
     result = incomplete_pattern.sub(r'\1', result)
     
     return result
+
+
+test_read_pdf_content_local()
