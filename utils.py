@@ -545,4 +545,4 @@ def strip_markdown_fences(text: str) -> str:
     return result
 
 
-test_read_pdf_content_local()
+# test_read_pdf_content_local()
