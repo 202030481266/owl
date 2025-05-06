@@ -16,7 +16,7 @@ from camel.models import BaseModelBackend
 from owl.utils.enhanced_role_playing import OwlRolePlaying, arun_society
 
 from config_loader import ConfigLoader
-from utils import read_pdf_content, analyze_chat_history, strip_markdown_fences
+from utils import read_pdf_content_local_single, analyze_chat_history, strip_markdown_fences
 from prompts_en import ACADEMIC_PAPER_SUMMARY_PROMPT_EN, PAPER_COMPARISON_SUMMARY_PROMPT_EN
 from jinja2 import Template
 
@@ -260,7 +260,7 @@ async def main(
             logger.info(f"在 {PAPER_DATA_DIR} 目录中找到 {len(pdf_files)} 个PDF文件")
 
             # 使用异步协程处理论文分析
-            async def process_paper(pdf_path):
+            async def process_paper(pdf_path, pdf_content):
                 """异步处理单篇论文的函数"""
                 try:
                     # 从文件名生成论文标题
@@ -271,31 +271,14 @@ async def main(
                     output_filename = os.path.basename(pdf_path).replace(".pdf", ".md")
                     output_path = os.path.join(PAPER_ANALYSIS_DIR, output_filename)
 
-                    print(f"\033[96m正在处理论文: {paper_title}\033[0m")
-                    logger.info(f"正在处理论文: {paper_title}, 路径: {pdf_path}")
+                    print(f"\033[96m正在分析论文: {paper_title}\033[0m")
+                    logger.info(f"正在分析论文: {paper_title}, 路径: {pdf_path}")
 
-                    # 读取PDF内容 (使用run_in_executor将同步函数转为异步)
+                    # 使用大模型总结论文 (使用run_in_executor将同步函数转为异步)
                     loop = asyncio.get_running_loop()
-                    pdf_content_result = await loop.run_in_executor(
-                        None,
-                        lambda: read_pdf_content(pdf_path, is_directory=False, output_dir=PAPER_ANALYSIS_DIR)
-                    )
-
-                    if pdf_content_result['status'] == 'fail':
-                        logger.error(f"读取PDF内容失败: {pdf_content_result['content']}")
-                        return {
-                            "title": paper_title,
-                            "status": "失败",
-                            "error": pdf_content_result["content"]
-                        }
-
-                    # 获取PDF内容
-                    paper_content = next(iter(pdf_content_result.values()))
-
-                    # 使用大模型总结论文 (同样使用run_in_executor)
                     summary = await loop.run_in_executor(
                         None,
-                        lambda: summarize_paper(paper_content)
+                        lambda: summarize_paper(pdf_content)
                     )
 
                     # 保存总结内容 (将同步IO操作转换为异步)
@@ -325,16 +308,44 @@ async def main(
                     f.write(f"# {title} - 论文总结\n\n")
                     f.write(strip_markdown_fences(content))
 
+            # 首先顺序读取所有PDF文件的内容
+            pdf_contents = {}
+            for pdf_path in pdf_files:
+                base_name = os.path.basename(pdf_path)
+                print(f"\033[96m正在读取PDF: {base_name}\033[0m")
+                logger.info(f"正在读取PDF: {base_name}, 路径: {pdf_path}")
+                
+                try:
+                    # 读取PDF内容
+                    middle_save_dir = os.path.join(PAPER_ANALYSIS_DIR, "middle")
+                    pdf_content_result = read_pdf_content_local_single(pdf_path, output_dir=middle_save_dir)
+                    
+                    if pdf_content_result['status'] == 'success':
+                        pdf_contents[pdf_path] = pdf_content_result['content']
+                        print(f"\033[92mPDF '{base_name}' 读取成功\033[0m")
+                        logger.info(f"PDF '{base_name}' 读取成功")
+                    else:
+                        print(f"\033[91mPDF '{base_name}' 读取失败: {pdf_content_result['content']}\033[0m")
+                        logger.error(f"读取PDF内容失败: {pdf_content_result['content']}")
+                except Exception as e:
+                    print(f"\033[91mPDF '{base_name}' 读取出现异常: {str(e)}\033[0m")
+                    logger.error(f"读取PDF异常: {str(e)}")
+
             # 使用信号量限制并发量
-            semaphore = asyncio.Semaphore(config['max_concurrent_process'])  # 最多同时处理5篇论文
+            semaphore = asyncio.Semaphore(config['max_concurrent_process'])  # 最多同时处理N篇论文分析
+
+            # 只对成功读取内容的PDF文件进行分析
+            analyzed_pdf_paths = list(pdf_contents.keys())
+            print(f"\033[94m共有 {len(analyzed_pdf_paths)}/{len(pdf_files)} 个PDF文件读取成功，开始并发分析...\033[0m")
+            logger.info(f"共有 {len(analyzed_pdf_paths)}/{len(pdf_files)} 个PDF文件读取成功，开始并发分析")
 
             async def process_with_semaphore(pdf_path):
                 """使用信号量限制并发处理数量"""
                 async with semaphore:
-                    return await process_paper(pdf_path)
+                    return await process_paper(pdf_path, pdf_contents[pdf_path])
 
             # 创建所有论文的处理任务
-            tasks = [process_with_semaphore(pdf_path) for pdf_path in pdf_files]
+            tasks = [process_with_semaphore(pdf_path) for pdf_path in analyzed_pdf_paths]
             # 并发执行所有任务
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
