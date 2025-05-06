@@ -7,9 +7,15 @@ import zipfile
 import io
 import json
 import re
+import traceback
 from pathlib import Path
 from camel.logger import set_log_level, get_logger
 from config_loader import ConfigLoader
+
+from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader
+from magic_pdf.data.dataset import PymuDocDataset
+from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
+from magic_pdf.config.enums import SupportedPdfParseMethod
 
 # 加载配置
 config = ConfigLoader.load_config()
@@ -27,7 +33,7 @@ utils_logger.addHandler(file_handler)
 
 
 # 读取pdf文件的内容
-def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str = "./output") -> dict:
+def read_pdf_content_api_single(pdf_path: str, is_directory: bool = False, output_dir: str = "./output") -> dict:
     """
     使用 MinerU API 处理单个 PDF 文件或目录中的多个 PDF 文件，提取 Markdown 内容。
 
@@ -319,24 +325,107 @@ def read_pdf_content(pdf_path: str, is_directory: bool = False, output_dir: str 
         return {"content": error_message, "status": "fail"}
 
 
-def read_pdf_content_local(pdf_path: str, is_directory: bool = False, output_dir: str = "./output") -> dict:
+def read_pdf_content_local_single(pdf_path: str, output_dir: str) -> dict:
+    """
+    使用本地安装的 MineU (magic_pdf) 库处理单个 PDF 文件，提取 Markdown 内容。
+    Args:
+        pdf_path: 指向单个 PDF 文件的路径。
+        output_dir: 用于存储中间文件（如图片、布局调试 PDF）和最终 Markdown 文件的目录。
+                     默认为 "./output"。
+    Returns:
+        dict:
+            - 返回一个字典，键是原始 PDF 文件名，
+              值是包含处理结果的字典 `{"content": str, "status": str}`。
+    """
+    # 如果pdf_path不存在，则返回错误
+    if not os.path.exists(pdf_path):
+        error_message = f"文件不存在: {pdf_path}"
+        logger.error(error_message)
+        return {"content": error_message, "status": "fail"}
+
+    # 创建文件夹，保存输出的结果和中间件
+    os.makedirs(output_dir, exist_ok=True)
+    local_image_dir = os.path.join(output_dir, "images")
+    os.makedirs(local_image_dir, exist_ok=True) # 创建图片保存的文件夹
+    image_dir = os.path.basename(local_image_dir)
+
+    # 创建文件写入器
+    image_writer = FileBasedDataWriter(local_image_dir)
+    md_writer = FileBasedDataWriter(output_dir)
+
+    # 读取PDF文件
+    pdf_reader = FileBasedDataReader("")
+    filename = os.path.basename(pdf_path) # 获取文件名
+    name_without_suffix = os.path.splitext(filename)[0]
+
+    # 读取PDF文件
+    pdf_bytes = pdf_reader.read(pdf_path)
+
+    # 创建数据集实例
+    ds = PymuDocDataset(pdf_bytes)
+
+    try:
+        # 推理
+        if ds.classify() == SupportedPdfParseMethod.OCR:
+            logger.info(f"文件 {filename} 使用OCR模式处理")
+            infer_result = ds.apply(doc_analyze, ocr=True)
+            pipe_result = infer_result.pipe_ocr_mode(image_writer)
+        else:
+            logger.info(f"文件 {filename} 使用文本模式处理")
+            infer_result = ds.apply(doc_analyze, ocr=False)
+            pipe_result = infer_result.pipe_txt_mode(image_writer)
+    except Exception as e:
+        error_details = traceback.format_exc()  # 获取完整的堆栈跟踪
+        error_message = f"处理文件 {filename} 时在推理阶段发生错误: {str(e)}\n堆栈跟踪: \n{error_details}"
+        logger.error(error_message)
+        return {"content": error_message, "status": "fail"}
+    else:
+        try:
+            # 保存模型结果 (可选)
+            infer_result.draw_model(os.path.join(output_dir, f"{name_without_suffix}_model.pdf"))
+
+            # 保存布局结果 (可选)
+            pipe_result.draw_layout(os.path.join(output_dir, f"{name_without_suffix}_layout.pdf"))
+
+            # 保存spans结果 (可选)
+            pipe_result.draw_span(os.path.join(output_dir, f"{name_without_suffix}_spans.pdf"))
+
+            # 获取markdown内容
+            md_content_from_pipe = pipe_result.get_markdown(image_dir)
+
+            # 保存markdown
+            md_file_path = f"{name_without_suffix}.md"
+            pipe_result.dump_md(md_writer, md_file_path, image_dir)
+
+            # 生成和保存内容列表 (可选)
+            pipe_result.dump_content_list(md_writer, f"{name_without_suffix}_content_list.json", image_dir)
+
+            # 生成和保存中间JSON (可选)
+            pipe_result.dump_middle_json(md_writer, f'{name_without_suffix}_middle.json')
+        except Exception as e:
+            error_details = traceback.format_exc()  # 获取完整的堆栈跟踪
+            error_message = f"处理文件 {filename} 时在保存结果阶段发生错误: {str(e)}\n堆栈跟踪: \n{error_details}"
+            logger.error(error_message)
+            return {"content": error_message, "status": "fail"}
+        else:
+            return {"content": md_content_from_pipe, "status": "success"}
+
+
+def read_pdf_content_local_batch(pdf_paths: list[str], output_dir: str = "./output") -> list[dict]:
     """
     使用本地安装的 MineU (magic_pdf) 库处理单个或多个 PDF 文件，提取 Markdown 内容。
 
     Args:
-        pdf_path: 指向单个 PDF 文件或包含 PDF 文件的目录的路径。
-        is_directory: 布尔值，指示 `pdf_path` 是否是目录。默认为 False。
+        pdf_paths: 包含多个 PDF 文件路径的列表。
         output_dir: 用于存储中间文件（如图片、布局调试 PDF）和最终 Markdown 文件的目录。
                      默认为 "./output"。
 
     Returns:
         dict:
-            - 如果 `is_directory` 为 True: 返回一个字典，键是原始 PDF 文件名，
+            - 返回一个字典，键是原始 PDF 文件名，
               值是包含处理结果的字典 `{"content": str, "status": str}`。
               `content` 是提取的 Markdown 内容（成功时）或错误信息（失败时），
               `status` 是 "success" 或 "fail"。
-            - 如果 `is_directory` 为 False: 返回单个包含处理结果的字典
-              `{"content": str, "status": str}`。
             - 如果在初始阶段发生错误（例如库导入失败、文件/目录未找到）或捕获到主要异常，
               则返回包含错误信息的字典 `{"content": str, "status": "fail"}`。
               (若为目录处理且发生全局异常但有部分成功结果，会尝试返回部分结果)。
@@ -348,159 +437,46 @@ def read_pdf_content_local(pdf_path: str, is_directory: bool = False, output_dir
         - 需要本地正确安装 `magic_pdf` 相关的库。
         - 处理结果（包括 Markdown 和中间文件）会保存在 `output_dir` 中。
     """
-    try:
-        import os
-        from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader
-        from magic_pdf.data.dataset import PymuDocDataset
-        from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
-        from magic_pdf.config.enums import SupportedPdfParseMethod
-
-        os.makedirs(output_dir, exist_ok=True)
-        local_image_dir = os.path.join(output_dir, "images")
-        os.makedirs(local_image_dir, exist_ok=True)
-        image_dir = os.path.basename(local_image_dir)
-
-        image_writer = FileBasedDataWriter(local_image_dir)
-        md_writer = FileBasedDataWriter(output_dir)
-
-        pdf_files = []
-        file_names = []
-        result_dict = {} # 初始化 result_dict
-
-        if is_directory:
-            if not os.path.isdir(pdf_path):
-                error_message = f"目录不存在: {pdf_path}"
-                logger.error(error_message)
-                return {"content": error_message, "status": "fail"}
-
-            pdf_pattern = os.path.join(pdf_path, "*.pdf")
-            for pdf_file in glob.glob(pdf_pattern):
-                pdf_files.append(pdf_file)
-                file_names.append(os.path.basename(pdf_file))
-
-            if not pdf_files:
-                error_message = f"目录中未找到PDF文件: {pdf_path}"
-                logger.error(error_message)
-                return {"content": error_message, "status": "fail"}
-        else:
-            if not os.path.exists(pdf_path):
-                error_message = f"文件不存在: {pdf_path}"
-                logger.error(error_message)
-                return {"content": error_message, "status": "fail"}
-
-            pdf_files.append(pdf_path)
-            file_names.append(os.path.basename(pdf_path))
-
-        reader = FileBasedDataReader("")
-
-        for i, (pdf_file, file_name) in enumerate(zip(pdf_files, file_names)):
-            try:
-                logger.info(f"开始处理文件 {file_name}")
-                name_without_suffix = os.path.splitext(file_name)[0]
-
-                # 读取PDF文件
-                pdf_bytes = reader.read(pdf_file)
-
-                # 创建数据集实例
-                ds = PymuDocDataset(pdf_bytes)
-
-                # 推理
-                if ds.classify() == SupportedPdfParseMethod.OCR:
-                    logger.info(f"文件 {file_name} 使用OCR模式处理")
-                    infer_result = ds.apply(doc_analyze, ocr=True)
-                    pipe_result = infer_result.pipe_ocr_mode(image_writer)
-                else:
-                    logger.info(f"文件 {file_name} 使用文本模式处理")
-                    infer_result = ds.apply(doc_analyze, ocr=False)
-                    pipe_result = infer_result.pipe_txt_mode(image_writer)
-
-                # 保存模型结果 (可选)
-                # infer_result.draw_model(os.path.join(output_dir, f"{name_without_suffix}_model.pdf"))
-
-                # 获取模型推理结果 (可选)
-                # model_inference_result = infer_result.get_infer_res()
-
-                # 保存布局结果 (可选)
-                # pipe_result.draw_layout(os.path.join(output_dir, f"{name_without_suffix}_layout.pdf"))
-
-                # 保存spans结果 (可选)
-                # pipe_result.draw_span(os.path.join(output_dir, f"{name_without_suffix}_spans.pdf"))
-
-                # 获取markdown内容
-                md_content_from_pipe = pipe_result.get_markdown(image_dir)
-
-                # 保存markdown
-                md_file_path = f"{name_without_suffix}.md"
-                pipe_result.dump_md(md_writer, md_file_path, image_dir)
-
-                # 生成和保存内容列表 (可选)
-                # content_list_content = pipe_result.get_content_list(image_dir)
-                # pipe_result.dump_content_list(md_writer, f"{name_without_suffix}_content_list.json", image_dir)
-
-                # 生成和保存中间JSON (可选)
-                # middle_json_content = pipe_result.get_middle_json()
-                # pipe_result.dump_middle_json(md_writer, f'{name_without_suffix}_middle.json')
-
-                # 再次读取生成的markdown文件以确保内容一致性 (如果 dump_md 可靠，也可直接用 md_content_from_pipe)
-                md_file_full_path = os.path.join(output_dir, md_file_path)
-                if os.path.exists(md_file_full_path):
-                    with open(md_file_full_path, 'r', encoding='utf-8') as f:
-                        md_content = f.read()
-                    result_dict[file_name] = {
-                        "content": md_content,
-                        "status": "success"
-                    }
-                    logger.info(f"文件 {file_name} 处理成功，共{len(md_content)}字符")
-                else:
-                    # 如果dump_md失败或未生成文件
-                    error_message = f"处理文件 {file_name} 成功，但未能读取生成的Markdown文件: {md_file_full_path}"
-                    logger.error(error_message)
-                    result_dict[file_name] = {
-                        "content": md_content_from_pipe if md_content_from_pipe else error_message, # 尝试用内存中的md内容
-                        "status": "fail" # 标记为失败因为文件未找到
-                    }
-
-            except Exception as e:
-                error_message = str(e)
-                logger.error(f"处理文件 {file_name} 时出错: {error_message}")
-                result_dict[file_name] = {
-                    "content": f"处理失败: {error_message}",
-                    "status": "fail"
-                }
-
-        # 根据 is_directory 返回最终结果
-        if is_directory:
-            return result_dict
-        else:
-            # 对于单个文件，返回其对应的结果字典
-            # 如果 result_dict 为空 (例如初始检查就失败了，虽然上面已经return了，但作为保障)
-            # 或者处理失败了
-            return result_dict.get(file_names[0], {"content": "处理失败或未找到结果", "status": "fail"})
-
-    except ImportError as e:
-        error_message = f"未能导入必要的MineU库: {str(e)}. 请确保已正确安装 magic_pdf 相关依赖。"
-        logger.error(error_message)
-        return {"content": error_message, "status": "fail"}
-    except Exception as e:
-        error_message = f"PDF本地批量解析过程中发生未预料的错误: {str(e)}"
-        logger.exception(error_message) # 使用 exception 记录堆栈信息
-        # 检查是否是目录处理且已有部分结果
-        if is_directory and result_dict:
-            logger.warning(f"发生未预料错误，但已有部分文件处理完毕({len(result_dict)}/{len(file_names)})，将返回现有结果。")
-            # 补充未处理文件的错误状态
-            for file_name in file_names:
-                if file_name not in result_dict:
-                    result_dict[file_name] = {"content": f"因全局错误未处理: {error_message}", "status": "fail"}
-            return result_dict
-        # 如果是单个文件或目录处理但无任何结果，返回全局错误
-        return {"content": error_message, "status": "fail"}
+    results = []
+    for pdf_path in pdf_paths:
+        try:
+            pdf_file_name = os.path.basename(pdf_path)
+            name_without_suffix = os.path.splitext(pdf_file_name)[0]
+            output_dir_path = os.path.join(output_dir, name_without_suffix)
+            os.makedirs(output_dir_path, exist_ok=True)
+            result = read_pdf_content_local_single(pdf_path, output_dir_path)
+            results.append(result)
+        except Exception as e:
+            error_message = f"处理文件 {pdf_file_name} 时发生错误: {str(e)}"
+            logger.error(error_message)
+            results.append({"content": error_message, "status": "fail"})
+    return results
 
 
 def test_read_pdf_content_local():
-    result = read_pdf_content_local("D:/test/mineru/AutoSurvey.pdf", False, "./test/output")
-    print(result)
+    # 测试单个文件处理
+    single_result = read_pdf_content_local_single("D:/test/mineru/AutoSurvey.pdf", "D:/owl/test/output/AutoSurvey")
+    
+    # 测试批量文件处理
+    batch_files = ["D:/test/mineru/AutoSurvey.pdf", "D:/test/mineru/paper2code.pdf", "D:/test/mineru/LLMxMapReduceV2.pdf"]
+    batch_results = read_pdf_content_local_batch(batch_files, "D:/owl/test/output")
+    
+    # 检查批量处理结果
+    all_batch_success = all(result["status"] == "success" for result in batch_results)
+    
+    # 在最后统一输出结果
+    if single_result["status"] == "success":
+        print("\033[38;5;46mread_pdf_content_local_single 测试通过！\033[0m")  # 更鲜艳的绿色
+    else:
+        print(f"\033[38;5;196mread_pdf_content_local_single 测试失败: {single_result['content']}\033[0m")  # 更鲜艳的红色
+    
+    if all_batch_success:
+        print("\033[38;5;46mread_pdf_content_local_batch 测试通过！\033[0m")  # 更鲜艳的绿色
+    else:
+        failed_files = [batch_files[i] for i, result in enumerate(batch_results) if result["status"] == "fail"]
+        print(f"\033[38;5;196mread_pdf_content_local_batch 测试失败，以下文件处理失败: {', '.join(failed_files)}\033[0m")  # 更鲜艳的红色
 
-
+    
 # 分析聊天记录
 def analyze_chat_history(chat_history, key: str):
     """Analyze chat history and extract tool call information."""
@@ -567,3 +543,6 @@ def strip_markdown_fences(text: str) -> str:
     result = incomplete_pattern.sub(r'\1', result)
     
     return result
+
+
+test_read_pdf_content_local()
